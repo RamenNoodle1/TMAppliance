@@ -2,6 +2,9 @@
 autoinstall/config/appliance.vars.json
 autoinstall/dist/
 
+# Domotz generates this after login — contains account credentials
+syncro/containers/domotz/config/domotz.json
+
 # Tailscale auth keys if ever stored locally
 *.authkey
 
