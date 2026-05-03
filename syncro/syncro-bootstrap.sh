@@ -30,7 +30,7 @@ trap cleanup EXIT
 # --- Validate required variables ---
 [[ -z "${VERSION:-}"           ]] && fail "VERSION is not set. Set it as a Syncro script variable."
 [[ -z "${GITHUB_TOKEN:-}"      ]] && fail "GITHUB_TOKEN is not set. Set it as a Syncro script variable."
-[[ -z "${TAILSCALE_AUTH_KEY:-}"]] && fail "TAILSCALE_AUTH_KEY is not set. Set it as a Syncro script variable."
+#[[ -z "${TAILSCALE_AUTH_KEY:-}"]] && fail "TAILSCALE_AUTH_KEY is not set. Set it as a Syncro script variable."
 
 log "Starting Tech Marvel appliance bootstrap."
 log "  Repo:    ${GITHUB_REPO}"
@@ -69,7 +69,7 @@ SYNCRO_DIR="${WORK_DIR}/extracted/${EXTRACTED_DIR}/syncro"
 [[ -d "${SYNCRO_DIR}" ]] || fail "Expected syncro/ directory not found in release zip."
 [[ -f "${SYNCRO_DIR}/install-all.sh" ]] || fail "install-all.sh not found in syncro/."
 
-chmod +x "${SYNCRO_DIR}/install-all.sh"
+find "${SYNCRO_DIR}" -name "*.sh" -exec chmod +x {} \;
 
 # --- Execute ---
 log "Running install-all.sh (role: ${DEVICE_ROLE})..."

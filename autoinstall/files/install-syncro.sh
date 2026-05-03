@@ -73,7 +73,7 @@ main() {
   chmod 0755 "${installer_path}"
 
   log "Running Syncro installer $(basename "${installer_path}")..."
-  "${installer_path}"
+  "${installer_path}" --token "${SYNCRO_TOKEN}"
 
   if command -v syncro >/dev/null 2>&1; then
     log "Syncro CLI detected after installation."
