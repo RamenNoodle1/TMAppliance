@@ -1,0 +1,18 @@
+{
+  "hostname": "techmarvel-appliance",
+  "username": "techmarvel",
+  "passwordHash": "$6$REPLACE_WITH_OPENSSL_PASSWD_HASH",
+  "timezone": "America/New_York",
+  "locale": "en_US.UTF-8",
+  "sshAllowPassword": false,
+  "sshAuthorizedKeys": [
+    "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY techmarvel-appliance"
+  ],
+  "syncroInstallerUrl": "https://example.invalid/SyncroInstallerLinux-x64-REPLACE_ME.run",
+  "syncroInstallerSha256": "",
+  "syncroExpectedArch": "x64",
+  "applyAptUpgrades": true,
+  "networkWaitTimeoutSeconds": 300,
+  "bootstrapPingTarget": "8.8.8.8",
+  "networkYaml": "version: 2\nethernets:\n  lan:\n    match:\n      name: \"en*\"\n    dhcp4: true\n    dhcp6: false\n    optional: true"
+}

@@ -1,0 +1,20 @@
+title: "Tech Marvel"
+headerStyle: clean
+showGreeting: true
+
+layout:
+  header:
+    greeting:
+      text: "Tech Marvel Mission Control"
+      helpText: "System Status: Online"
+      enabled: true
+    logo: "__BRAND_LOGO_URL__"
+    content: "Tech Marvel | Your Business, Superpowered"
+
+  Infrastructure:
+    style: row
+    columns: 2
+
+  Links:
+    style: row
+    columns: 3

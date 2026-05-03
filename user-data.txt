@@ -1,0 +1,547 @@
+#cloud-config
+autoinstall:
+  version: 1
+#
+# Tech Marvel - Ubuntu appliance autoinstall
+#
+# Purpose:
+#   Build a repeatable single-client network appliance that installs:
+#   - Ubuntu Server
+#   - OS updates
+#   - Tailscale (native on host)
+#   - Docker Engine + Compose plugin
+#   - Containers:
+#       * Domotz
+#       * Uptime Kuma
+#       * Dashy
+#       * OpenSpeedTest
+#
+# Notes:
+# - This file is consumed by Ubuntu Server autoinstall / Subiquity.
+# - The main supported structure is under "autoinstall:".
+# - "late-commands" run near the end of installation.
+# - "user-data" -> "runcmd" runs on first boot.
+#
+# BEFORE USE:
+# - Replace the password hash
+# - Replace the SSH public key
+# - Replace the Tailscale auth key if you want zero-touch enrollment
+# - Review disk selection logic before production deployment
+# - Review any static IP settings if you do not want DHCP
+#
+# DESIGN CHOICES:
+# - Tailscale is installed natively on the host so remote access still works
+#   even if Docker has a problem.
+# - Docker Engine is installed from Docker's official apt repository.
+# - Domotz is run with host networking and NET_ADMIN to match Domotz's
+#   documented container requirements.
+# - App data is stored in /opt/techmarvel/* for easier backup and replacement.
+
+
+
+  ############################################################
+  # Region / language
+  ############################################################
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+    variant: ""
+  timezone: America/New_York
+
+  ############################################################
+  # Local admin account
+  ############################################################
+  identity:
+    hostname: techmarvel-appliance
+    username: techmarvel
+    # Generate with: openssl passwd -6
+    password: "$6$FKceNDIKHqLIercN$AqKB9/7MikfdiDW9ARRjpZxcyXcPx1qZtEPUlqMV5alRvFQqz1rMtYweQ0WQAQVip5482myM8g5wqjP1btLiJ0"
+
+  ############################################################
+  # SSH
+  ############################################################
+  ssh:
+    install-server: true
+    allow-pw: true
+    authorized-keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE+egL+ezLGx/ksqtfnXYdmDcrbFXaFEOTQRd65qekr5 techmarvel-appliance"
+
+  ############################################################
+  # Network
+  # Start simple with DHCP.
+  # For production, replace this with a pinned interface name or static IP.
+  ############################################################
+  network:
+    version: 2
+    ethernets:
+      lan:
+        match:
+          name: "en*"
+        dhcp4: true
+        dhcp6: false
+        optional: true
+
+  ############################################################
+  # Storage
+  # Direct layout is simpler for an appliance.
+  # Review carefully if your hardware may have multiple disks.
+  ############################################################
+  storage:
+    layout:
+      name: direct
+
+  ############################################################
+  # Apt behavior during install
+  ############################################################
+  apt:
+    preserve_sources_list: false
+    geoip: true
+
+  ############################################################
+  # Base packages from Ubuntu repo
+  ############################################################
+  packages:
+    - curl
+    - wget
+    - git
+    - ca-certificates
+    - gnupg
+    - lsb-release
+    - jq
+    - unzip
+    - htop
+    - net-tools
+    - unattended-upgrades
+
+  ############################################################
+  # Files and directories staged into the target OS
+  ############################################################
+  late-commands:
+    # Create base directories
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel/dashy
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel/compose
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel/homepage/config
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel/uptime-kuma
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel/domotz/config
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel/openspeedtest
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel/scripts
+    - curtin in-target --target=/target -- mkdir -p /opt/techmarvel/speedtest-tracker
+
+    # Persistent Domotz config file
+    - curtin in-target --target=/target -- touch /opt/techmarvel/domotz/config/domotz.json
+
+    # Dashy config
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/dashy/conf.yml << "EOF"
+      pageInfo:
+        title: Tech Marvel Appliance
+        description: Client-side utility appliance
+      appConfig:
+        theme: colorful
+        layout: auto
+      sections:
+        - name: Monitoring
+          icon: fas fa-heartbeat
+          items:
+            - title: Dashy
+              description: Local dashboard
+              url: http://localhost:8080
+            - title: Uptime Kuma
+              description: Monitoring
+              url: http://localhost:3001
+            - title: Domotz
+              description: Collector setup
+              url: http://localhost:3000
+            - title: OpenSpeedTest
+              description: Speed test
+              url: http://localhost:3002
+      EOF'
+
+    # Homepage config (bookmarks)
+    #- |
+    #  curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/homepage/config/bookmarks.yaml << "EOF"
+    #  EOF'
+
+    # Homepage config (widgets)
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/homepage/config/widgets.yaml << "EOF"
+      - datetime:
+          text_size: xl
+          format:
+            date: long
+            time: short
+            hour12: true
+
+      - search:
+          provider: google
+          focus: true
+          showOptional: true
+
+      - resources:
+          cpu: true
+          memory: true
+          disk: /
+      EOF'
+
+    # Homepage config (custom css)
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/homepage/config/custom.css << "EOF"
+      /* custom.css - Inject via your user-data write_files */
+
+      /* 1. Deep Tech Background */
+      body {
+          background: radial-gradient(circle at center, #1a1a1a 0%, #0d0d0d 100%);
+          color: #e0e0e0;
+      }
+
+      /* 2. Branded "Superhero" Card Style */
+      .card {
+          background: rgba(40, 40, 40, 0.4) !important;
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(165, 42, 42, 0.3); /* Sublte Maroon border */
+          border-radius: 16px !important;
+          transition: all 0.3s ease;
+      }
+
+      .card:hover {
+          border: 1px solid #ff3131; /* Tech Marvel Red highlight on hover */
+          box-shadow: 0 0 15px rgba(255, 49, 49, 0.2);
+          transform: translateY(-2px);
+      }
+
+      /* 3. High-Tech Header Styling */
+      .header-title {
+          font-weight: 800;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          background: linear-gradient(90deg, #ff3131, #c0c0c0); /* Red to Silver */
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+      }
+
+      /* 4. Custom Icon Accents */
+      .icon-container {
+          filter: drop-shadow(0 0 5px rgba(192, 192, 192, 0.5)); /* Silver Glow */
+      EOF'
+
+    # Homepage config (docker)
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/homepage/config/docker.yaml << "EOF"
+      my-socket:
+        socket: /var/run/docker.sock
+      EOF'
+
+    # Docker Compose stack
+    # Pin specific image tags after lab validation.
+    # Replace image tags with the exact versions you approve.
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/compose/docker-compose.yml << "EOF"
+      services:
+        domotz:
+          image: domotz/domotz-collector:latest
+          container_name: domotz
+          network_mode: host
+          cap_add:
+            - NET_ADMIN
+          volumes:
+            - /opt/techmarvel/domotz/config/domotz.json:/opt/domotz/etc/domotz.json
+          restart: unless-stopped
+
+        uptime-kuma:
+          image: louislam/uptime-kuma:1
+          container_name: uptime-kuma
+          ports:
+            - "3001:3001"
+          volumes:
+            - /opt/techmarvel/uptime-kuma:/app/data
+          restart: unless-stopped
+
+        openspeedtest:
+          image: openspeedtest/latest:latest
+          container_name: openspeedtest
+          ports:
+            - "3002:3000"
+            - "3003:3001"
+          restart: unless-stopped
+
+        homepage:
+          image: ghcr.io/gethomepage/homepage:latest
+          container_name: homepage
+          ports:
+            - 3005:3000
+          volumes:
+            - /opt/techmarvel/homepage/config:/app/config
+            - /var/run/docker.sock:/var/run/docker.sock:ro # Vital for auto-discovery
+
+          environment:
+            # IMPORTANT: No spaces after commas!
+            - HOMEPAGE_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.2.137:3005,192.168.2.239:3005,192.168.2.x:3005,192.168.2.x.10
+          restart: unless-stopped
+
+        speedtest-tracker:
+          container_name: speedtest-tracker
+          image: lscr.io/linuxserver/speedtest-tracker:latest
+          restart: unless-stopped
+          ports:
+            - 8982:80
+            - 8443:443
+          environment:
+            - PUID=1000
+            - PGID=1000
+            - APP_KEY=base64:lNHCRe1vD6NAwpfnL+EEMXeh3TINVSyQVDmneOKOBtw=
+            - APP_URL=http://192.168.2.137:8982
+            - APP_TIMEZONE=America/New_York
+            - DISPLAY_TIMEZONE=America/New_York
+            - SPEEDTEST_SCHEDULE=0 */2 * * * # Runs every 2 hours
+            - DB_CONNECTION=sqlite
+            - PUBLIC_DASHBOARD=true
+          volumes:
+            - /opt/techmarvel/speedtest-tracker:/config
+
+      EOF'
+
+    # Helper script: deploy / update stack
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/scripts/deploy-stack.sh << "EOF"
+      #!/usr/bin/env bash
+      set -euo pipefail
+      cd /opt/techmarvel/compose
+      docker compose pull || (sleep 10 && docker compose pull)
+      docker compose up -d
+      EOF
+      chmod +x /opt/techmarvel/scripts/deploy-stack.sh'
+
+    # Homepage config (services.yaml)
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/homepage/config/services.yaml << "EOF"
+      - Internet (WAN):
+        - Internet Speed (Tracker):
+            icon: speedtest-tracker.png
+            href: http://192.168.2.137:8982
+            widget:
+              type: speedtest # <-- No dash here!
+              url: http://192.168.2.137:8982
+
+        - Network Identity:
+            icon: mdi-ip-network
+            widget:
+              type: customapi
+              url: http://ip-api.com/json/
+              refreshInterval: 600000 # Refresh every 10 mins
+              method: GET
+              mappings:
+                - field: query
+                  label: WAN IP
+                - field: isp
+                  label: Provider
+                - field: city
+                  label: Location
+                  # This combines City and Region (e.g., Randolph, NJ)
+                  format: text
+                  additionalField: region
+
+          - Website:
+              icon: uptime-kuma.png
+              href: http://192.168.2.137:3001
+              widget:
+                type: uptimekuma # <-- No dash here either!
+                url: http://192.168.2.137:3001
+                slug: website
+
+        - Internal (LAN):
+            - Uptime Kuma:
+                icon: uptime-kuma.png
+                href: http://192.168.2.137:3001
+                widget:
+                  type: uptimekuma # <-- No dash here either!
+                  url: http://192.168.2.137:3001
+                  slug: website
+
+            # THIS IS THE NEW LINK (No widget block needed)
+            - LAN Speed Test:
+                icon: openspeedtest.png # Uses the built-in Ubiquiti icon
+                href: http://192.168.2.137:3002/
+                description: Check the speed of the LAN
+        - Links:
+            # THIS IS THE NEW LINK (No widget block needed)
+            - LAN Speed Test:
+                icon: openspeedtest.png # Uses the built-in Ubiquiti icon
+                href: http://192.168.2.137:3002/
+                description: Check the speed of the LAN
+
+            # THIS IS THE NEW LINK (No widget block needed)
+            - Open Ticket:
+                icon: https://www.tech-marvel.com/files/2025/10/2025-10-03-TechMarvel-Logo.png
+                href: https://www.tech-marvel.com/support-center/
+                description: Need Help? Open a ticket with tech support!
+      EOF'
+
+
+    # Homepage config (settings.yaml)
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/homepage/config/settings.yaml << "EOF"
+      title: "Tech Marvel"
+      headerStyle: clean # Options: clean, boxed, or highlighted
+      showGreeting: true
+
+      # This puts your name and logo at the top left/center
+      layout:
+        header:
+          greeting:
+            text: "Tech Marvel Mission Control"
+            helpText: "System Status: Online"
+            enabled: true
+          logo: "https://www.tech-marvel.com/files/2025/10/2025-10-03-TechMarvel-Logo.png" # Path to your TM shield
+          content: "Tech Marvel | Your Business, Superpowered"
+
+        Infrastructure:
+          style: row
+          columns: 2
+
+        Links:
+          style: row
+          columns: 3
+      EOF'
+
+
+
+
+    # Helper script: show local URLs
+    - |
+      curtin in-target --target=/target -- /bin/bash -c 'cat > /opt/techmarvel/scripts/show-urls.sh << "EOF"
+      #!/usr/bin/env bash
+      IP=$(hostname -I | awk "{print \$1}")
+      echo "Dashy:         http://$IP:8080"
+      echo "Domotz:        http://$IP:3000"
+      echo "Uptime Kuma:   http://$IP:3001"
+      echo "OpenSpeedTest: http://$IP:3002"
+      EOF
+      chmod +x /opt/techmarvel/scripts/show-urls.sh'
+
+  ############################################################
+  # First boot configuration
+  ############################################################
+  user-data:
+    disable_root: true
+    package_update: true
+    #package_upgrade: true
+    package_upgrade: false
+    package_reboot_if_required: false
+
+    write_files:
+      ##########################################################
+      # MOTD
+      ##########################################################
+      - path: /etc/motd
+        permissions: "0644"
+        content: |
+          Tech Marvel Appliance
+
+          Local service defaults:
+          - Dashy:         http://THIS-HOST:8080
+          - Domotz:        http://THIS-HOST:3000
+          - Uptime Kuma:   http://THIS-HOST:3001
+          - OpenSpeedTest: http://THIS-HOST:3002
+
+      ##########################################################
+      # Install Docker from Docker's official apt repository
+      ##########################################################
+      - path: /usr/local/sbin/install-docker.sh
+        permissions: "0755"
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          # 1. Force non-interactive for this specific script
+          export DEBIAN_FRONTEND=noninteractive
+
+          # 2. Add the GPG key
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          chmod a+r /etc/apt/keyrings/docker.asc
+
+          # 3. Add the repository (using lsb_release to avoid variable expansion issues)
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+            > /etc/apt/sources.list.d/docker.list
+
+          # 4. Install Docker
+          apt-get update
+          apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+            docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+          # 5. Enable and start
+          systemctl enable docker
+          systemctl start docker
+
+      ##########################################################
+      # Install Tailscale on the host
+      ##########################################################
+      - path: /usr/local/sbin/install-tailscale.sh
+        permissions: "0755"
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          curl -fsSL https://tailscale.com/install.sh | sh
+          systemctl enable tailscaled
+          systemctl start tailscaled
+
+      ##########################################################
+      # Bring Tailscale online if an auth key is supplied
+      ##########################################################
+      - path: /usr/local/sbin/tailscale-up.sh
+        permissions: "0755"
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          TAILSCALE_AUTH_KEY="tskey-auth-kYDLsEqc6511CNTRL-cPxqmBWjpFdLbNit8PhyFdPDB79vtu4z"
+
+          if [[ -n "${TAILSCALE_AUTH_KEY}" && "${TAILSCALE_AUTH_KEY}" != "REPLACE_WITH_YOUR_TAILSCALE_AUTH_KEY" ]]; then
+            tailscale up --authkey="${TAILSCALE_AUTH_KEY}" --ssh --accept-dns=false --timeout 1m
+          else
+            echo "No Tailscale auth key supplied; skipping auto-enrollment."
+          fi
+
+      ##########################################################
+      # Optional: enable unattended upgrades
+      ##########################################################
+      - path: /etc/apt/apt.conf.d/20auto-upgrades
+        permissions: "0644"
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+
+    runcmd:
+      # 1. Non-interactive frontend to prevent apt from hanging on prompts
+      - export DEBIAN_FRONTEND=noninteractive
+      - apt-get update
+      - apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
+      - [ sh, -c, "echo 'Step 1 completed on $(date)' >> /var/log/techmarvel-provisioning.log" ]
+
+
+      # 2. Wait for network
+      - [ sh, -c, "until ping -c 1 8.8.8.8; do echo 'Waiting for network...'; sleep 5; done" ]
+      - [ sh, -c, "echo 'Step 2 completed on $(date)' >> /var/log/techmarvel-provisioning.log" ]
+
+      # 3. Installation
+      - /usr/local/sbin/install-docker.sh
+      - [ sh, -c, "echo 'Step 3a completed on $(date)' >> /var/log/techmarvel-provisioning.log" ]
+      - /usr/local/sbin/install-tailscale.sh
+      - [ sh, -c, "echo 'Step 3b completed on $(date)' >> /var/log/techmarvel-provisioning.log" ]
+      - /usr/local/sbin/tailscale-up.sh
+      - [ sh, -c, "echo 'Step 3c completed on $(date)' >> /var/log/techmarvel-provisioning.log" ]
+
+      # 4. Ensure Docker service is fully cycled and socket is ready
+      #- systemctl restart docker
+      - [ sh, -c, "while ! docker info >/dev/null 2>&1; do echo 'Waiting for Docker API...'; sleep 2; done" ]
+      - [ sh, -c, "echo 'Step 4 completed on $(date)' >> /var/log/techmarvel-provisioning.log" ]
+
+      # 5. Group and Deploy
+      - usermod -aG docker techmarvel
+      - chmod +x /opt/techmarvel/scripts/deploy-stack.sh
+      - /opt/techmarvel/scripts/deploy-stack.sh
+      - [ sh, -c, "echo 'Step 5 completed on $(date)' >> /var/log/techmarvel-provisioning.log" ]
+
+      # 6. Logging
+      - [ sh, -c, "echo 'Provisioning completed on $(date)' >> /var/log/techmarvel-provisioning.log" ]

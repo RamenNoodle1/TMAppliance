@@ -1,0 +1,54 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  locale: __LOCALE__
+  keyboard:
+    layout: us
+    variant: ""
+  timezone: __TIMEZONE__
+
+  identity:
+    hostname: __HOSTNAME__
+    username: __USERNAME__
+    password: "__PASSWORD_HASH__"
+
+  ssh:
+    install-server: true
+    allow-pw: __SSH_ALLOW_PASSWORD__
+    authorized-keys:
+__SSH_AUTHORIZED_KEYS__
+
+  network:
+__NETWORK_CONFIG__
+
+  storage:
+    layout:
+      name: direct
+
+  apt:
+    preserve_sources_list: false
+    geoip: true
+
+  packages:
+    - ca-certificates
+    - curl
+    - jq
+    - wget
+
+  late-commands:
+    - curtin in-target --target=/target -- mkdir -p /etc/techmarvel /opt/techmarvel/bin /var/lib/techmarvel
+
+  user-data:
+    disable_root: true
+    package_update: false
+    package_upgrade: false
+    package_reboot_if_required: false
+
+    write_files:
+__WRITE_FILES__
+
+    runcmd:
+      - [ systemctl, daemon-reload ]
+      - [ systemctl, enable, techmarvel-bootstrap.service ]
+      - [ systemctl, start, techmarvel-bootstrap.service ]

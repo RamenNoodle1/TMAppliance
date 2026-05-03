@@ -1,0 +1,31 @@
+body {
+  background: radial-gradient(circle at center, #1a1a1a 0%, #0d0d0d 100%);
+  color: #e0e0e0;
+}
+
+.card {
+  background: rgba(40, 40, 40, 0.4) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(165, 42, 42, 0.3);
+  border-radius: 16px !important;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border: 1px solid #ff3131;
+  box-shadow: 0 0 15px rgba(255, 49, 49, 0.2);
+  transform: translateY(-2px);
+}
+
+.header-title {
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #ff3131, #c0c0c0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.icon-container {
+  filter: drop-shadow(0 0 5px rgba(192, 192, 192, 0.5));
+}

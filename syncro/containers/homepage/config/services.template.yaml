@@ -1,0 +1,44 @@
+- Internet (WAN):
+  - Internet Speed (Tracker):
+      icon: speedtest-tracker.png
+      href: http://__APPLIANCE_HOST__:8982
+      widget:
+        type: speedtest
+        url: http://__APPLIANCE_HOST__:8982
+
+  - Network Identity:
+      icon: mdi-ip-network
+      widget:
+        type: customapi
+        url: http://ip-api.com/json/
+        refreshInterval: 600000
+        method: GET
+        mappings:
+          - field: query
+            label: WAN IP
+          - field: isp
+            label: Provider
+          - field: city
+            label: Location
+            format: text
+            additionalField: region
+
+- Internal (LAN):
+  - Uptime Kuma:
+      icon: uptime-kuma.png
+      href: http://__APPLIANCE_HOST__:3001
+      widget:
+        type: uptimekuma
+        url: http://__APPLIANCE_HOST__:3001
+        slug: website
+
+  - LAN Speed Test:
+      icon: openspeedtest.png
+      href: http://__APPLIANCE_HOST__:3002/
+      description: Check the speed of the LAN
+
+- Links:
+  - Open Ticket:
+      icon: __BRAND_LOGO_URL__
+      href: https://www.tech-marvel.com/support-center/
+      description: Need help? Open a ticket with tech support.

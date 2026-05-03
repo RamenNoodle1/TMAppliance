@@ -1,0 +1,13 @@
+[Unit]
+Description=Tech Marvel appliance bootstrap
+After=network-online.target cloud-final.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/techmarvel/bootstrap-complete
+
+[Service]
+Type=oneshot
+ExecStart=/opt/techmarvel/bin/bootstrap.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

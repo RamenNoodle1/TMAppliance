@@ -1,0 +1,16 @@
+- datetime:
+    text_size: xl
+    format:
+      date: long
+      time: short
+      hour12: true
+
+- search:
+    provider: google
+    focus: true
+    showOptional: true
+
+- resources:
+    cpu: true
+    memory: true
+    disk: /
