@@ -22,10 +22,13 @@ autoinstall/                  # Ubuntu autoinstall artifacts
   render-user-data.ps1                 # PowerShell: reads vars + files → dist/user-data.yaml
   .gitignore                           # Excludes config/appliance.vars.json and dist/
 
-syncro/                       # Scripts Syncro delivers and runs post-enrollment
-  install-all.sh              # Master orchestrator — runs everything in order
+syncro/                       # Scripts delivered via versioned GitHub release
+  syncro-bootstrap.sh         # Stored in Syncro Script Library (NOT pulled from GitHub)
+  install-all.sh              # Role router → calls service installers in order
   common/docker-common.sh     # Shared Docker helpers (log, retry, compose_up, render_template…)
   docker/install-docker.sh    # Installs Docker Engine + Compose plugin
+  tailscale/install.sh        # Installs and authenticates Tailscale
+  tailscale/uninstall.sh      # Removes Tailscale
   containers/<service>/       # One directory per container service
     compose.yaml              # Docker Compose definition
     install.sh                # Idempotent installer
@@ -62,13 +65,46 @@ Tailscale is also installed by Syncro (not a Docker container).
 2. Run `render-user-data.ps1` — outputs `dist/user-data.yaml`.
 3. Place `user-data.yaml` and an empty `meta-data` file on the autoinstall source (USB or HTTP server).
 
-## Current Status (as of 2026-05-03)
+## Deployment Flow
 
-**Done:**
-- Full autoinstall pipeline (OS install → Syncro enrollment)
-- Docker installation module
-- Containers: Uptime Kuma, Homepage, OpenSpeedTest, Speedtest Tracker, Domotz
-- Homepage branding/config templates
-- Master `install-all.sh` orchestrator
+```
+USB boots → Ubuntu installs (user-data.yaml)
+          → bootstrap.sh downloads & runs Syncro installer
+          → Syncro agent enrolls, policy triggers syncro-bootstrap.sh
+          → Downloads versioned zip from GitHub (VERSION tag)
+          → Optionally verifies SHA256
+          → Runs install-all.sh (DEVICE_ROLE=standard)
+              → Docker installs
+              → Tailscale installs & authenticates
+              → Containers deploy
+```
 
-**Complete as of 2026-05-03.**
+### What lives where
+
+| Location | What |
+|----------|------|
+| Syncro Script Library | `syncro-bootstrap.sh` only |
+| GitHub (versioned release) | Everything in `syncro/` except `syncro-bootstrap.sh` |
+| Syncro script variables | All secrets and per-deployment config |
+
+### Syncro script variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VERSION` | Yes | GitHub release tag, e.g. `v1.0.0` |
+| `GITHUB_TOKEN` | Yes | PAT with `repo` read scope (private repo) |
+| `TAILSCALE_AUTH_KEY` | Yes | Reusable Tailscale auth key |
+| `DEVICE_ROLE` | No | Build role (default: `standard`) |
+| `EXPECTED_SHA256` | No | If set, zip is verified before execution |
+
+### How to cut a release
+
+1. Merge changes to `main`, tag: `git tag v1.x.x && git push origin v1.x.x`
+2. GitHub creates the release zip automatically
+3. If using SHA256 verification: download the zip, run `sha256sum appliance.zip`, update `EXPECTED_SHA256` in Syncro
+4. Update `VERSION` in the Syncro script variable
+
+### Adding a new device role
+
+1. Add a new `case` block in `syncro/install-all.sh` listing the installers for that role
+2. Set `DEVICE_ROLE` to the new role name in the Syncro script variable for that policy

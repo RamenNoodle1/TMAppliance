@@ -9,4 +9,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=__HOMEPAGE_ALLOWED_HOSTS__
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped

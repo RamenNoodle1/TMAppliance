@@ -4,7 +4,7 @@
       href: http://__APPLIANCE_HOST__:8982
       widget:
         type: speedtest
-        url: http://__APPLIANCE_HOST__:8982
+        url: http://host.docker.internal:8982
 
   - Network Identity:
       icon: mdi-ip-network
@@ -29,7 +29,7 @@
       href: http://__APPLIANCE_HOST__:3001
       widget:
         type: uptimekuma
-        url: http://__APPLIANCE_HOST__:3001
+        url: http://host.docker.internal:3001
         slug: website
 
   - LAN Speed Test:

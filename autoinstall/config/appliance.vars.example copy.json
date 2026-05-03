@@ -1,14 +1,14 @@
 {
   "hostname": "techmarvel-appliance",
   "username": "techmarvel",
-  "passwordHash": "$6$REPLACE_WITH_OPENSSL_PASSWD_HASH",
+  "passwordHash": "$6$ZMxUKjQNlHocDl.g$8bI3tFmX3X51EEL3g3tFxHFZV4ZRiMTc8cuIDD76Wlh3y8xy.PL9hHM7nNLvr3JI79IMyBgi5WjfrjPpryIBq0",
   "timezone": "America/New_York",
   "locale": "en_US.UTF-8",
   "sshAllowPassword": false,
   "sshAuthorizedKeys": [
-    "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY techmarvel-appliance"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIYourPublicKeyHere you@example.com"
   ],
-  "syncroInstallerUrl": "https://example.invalid/SyncroInstallerLinux-x64-REPLACE_ME.run",
+  "syncroInstallerUrl": "https://rmm.syncromsp.com/dl/rs/YOUR_SYNCRO_INSTALLER_TOKEN",
   "syncroInstallerSha256": "",
   "syncroExpectedArch": "x64",
   "applyAptUpgrades": true,
