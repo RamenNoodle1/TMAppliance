@@ -135,6 +135,7 @@ function New-EnvFileContent {
         "APPLY_APT_UPGRADES=$(([bool](Get-ConfigValue -Config $Config -Name 'applyAptUpgrades' -Default $true)).ToString().ToLowerInvariant())"
         "NETWORK_WAIT_TIMEOUT_SECONDS=$([int](Get-ConfigValue -Config $Config -Name 'networkWaitTimeoutSeconds' -Default 300))"
         "BOOTSTRAP_PING_TARGET=$(Convert-ToShellSingleQuoted -Value ([string](Get-ConfigValue -Config $Config -Name 'bootstrapPingTarget' -Default '8.8.8.8')))"
+        "SYNCRO_TOKEN=$(Convert-ToShellSingleQuoted -Value ([string](Get-ConfigValue -Config $Config -Name 'syncroToken' -Required)))"
     )
 
     return ($lines -join "`n") + "`n"

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$UserDataPath = (Join-Path $PSScriptRoot 'dist\user-data.yaml'),
-    [string]$OutputPath   = (Join-Path $PSScriptRoot 'dist\cidata.vhd')
+    [string]$OutputPath   = 'C:\temp\cidata\cidata.vhd'
 )
 
 Set-StrictMode -Version Latest

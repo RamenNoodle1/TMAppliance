@@ -9,6 +9,7 @@
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIYourPublicKeyHere you@example.com"
   ],
   "syncroInstallerUrl": "https://rmm.syncromsp.com/dl/rs/YOUR_SYNCRO_INSTALLER_TOKEN",
+  "syncroToken": "YOUR_SYNCRO_TOKEN",
   "syncroInstallerSha256": "",
   "syncroExpectedArch": "x64",
   "applyAptUpgrades": true,
