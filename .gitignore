@@ -1,0 +1,20 @@
+# Secrets and generated output
+autoinstall/config/appliance.vars.json
+autoinstall/dist/
+
+# Tailscale auth keys if ever stored locally
+*.authkey
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/

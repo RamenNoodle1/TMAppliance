@@ -71,6 +71,4 @@ Tailscale is also installed by Syncro (not a Docker container).
 - Homepage branding/config templates
 - Master `install-all.sh` orchestrator
 
-**Missing / Incomplete:**
-- `syncro/tailscale/install.sh` (and `uninstall.sh`) — Tailscale is not yet a module
-- `install-all.sh` does not call Tailscale installer
+**Complete as of 2026-05-03.**
