@@ -30,7 +30,7 @@ trap cleanup EXIT
 # --- Validate required variables ---
 [[ -z "${VERSION:-}"           ]] && fail "VERSION is not set. Set it as a Syncro script variable."
 [[ -z "${GITHUB_TOKEN:-}"      ]] && fail "GITHUB_TOKEN is not set. Set it as a Syncro script variable."
-#[[ -z "${TAILSCALE_AUTH_KEY:-}"]] && fail "TAILSCALE_AUTH_KEY is not set. Set it as a Syncro script variable."
+[[ -z "${TAILSCALE_AUTH_KEY:-}" ]] && fail "TAILSCALE_AUTH_KEY is not set. Set it as a Syncro script variable."
 
 log "Starting Tech Marvel appliance bootstrap."
 log "  Repo:    ${GITHUB_REPO}"
@@ -69,12 +69,28 @@ SYNCRO_DIR="${WORK_DIR}/extracted/${EXTRACTED_DIR}/syncro"
 [[ -d "${SYNCRO_DIR}" ]] || fail "Expected syncro/ directory not found in release zip."
 [[ -f "${SYNCRO_DIR}/install-all.sh" ]] || fail "install-all.sh not found in syncro/."
 
-find "${SYNCRO_DIR}" -name "*.sh" -exec chmod +x {} \;
+# --- Copy to permanent location so temp dir cleanup doesn't break systemd-run ---
+INSTALL_DIR="/opt/techmarvel/setup"
+log "Installing scripts to ${INSTALL_DIR}..."
+rm -rf "${INSTALL_DIR}"
+cp -r "${SYNCRO_DIR}" "${INSTALL_DIR}"
+find "${INSTALL_DIR}" -name "*.sh" -exec chmod +x {} \;
 
-# --- Execute ---
-log "Running install-all.sh (role: ${DEVICE_ROLE})..."
-export TAILSCALE_AUTH_KEY
-export DEVICE_ROLE
-"${SYNCRO_DIR}/install-all.sh"
+# --- Clear any previous run of the transient unit ---
+systemctl stop techmarvel-install 2>/dev/null || true
+systemctl reset-failed techmarvel-install 2>/dev/null || true
 
-log "Bootstrap complete."
+# --- Hand off to systemd so install survives Syncro script exit ---
+INSTALL_LOG="/var/log/techmarvel-install.log"
+log "Handing off install-all.sh to systemd (role: ${DEVICE_ROLE}). Follow progress: tail -f ${INSTALL_LOG}"
+
+systemd-run \
+  --unit=techmarvel-install \
+  --description="Tech Marvel service installation" \
+  --property=StandardOutput=append:${INSTALL_LOG} \
+  --property=StandardError=append:${INSTALL_LOG} \
+  --setenv=TAILSCALE_AUTH_KEY="${TAILSCALE_AUTH_KEY}" \
+  --setenv=DEVICE_ROLE="${DEVICE_ROLE}" \
+  "${INSTALL_DIR}/install-all.sh"
+
+log "Handed off to systemd. Syncro script exiting. Installation continues independently."

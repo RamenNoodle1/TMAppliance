@@ -1,6 +1,6 @@
 [Unit]
 Description=Tech Marvel appliance bootstrap
-After=network-online.target cloud-final.service
+After=network-online.target
 Wants=network-online.target
 ConditionPathExists=!/var/lib/techmarvel/bootstrap-complete
 
